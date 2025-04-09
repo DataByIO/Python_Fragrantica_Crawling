@@ -1,6 +1,6 @@
 https://www.fragrantica.com/designers
-1) Imported Brand List from Site (120)
-2) Approaches from 120 zeros -> Starting from Aqua Di Pharma
+1) Imported Brand List from Site ( total 120)
+2) idx-0 Starting from Aqua Di Pharma
 3) Collect perfume lists and links to detail pages from idx-0
 4) idx-0 Save Perfume List Image
 5) idx-0 Link connection and data crawling on detailed pages
