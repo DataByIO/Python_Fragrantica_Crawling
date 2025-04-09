@@ -8,6 +8,7 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service as service #개발환경
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.options import Options  
+from selenium.webdriver.support import expected_conditions as EC
 
 def init():
     #전역변수(Global) 영역
@@ -23,23 +24,40 @@ def init():
     options = Options()
     options.binary_location= 'C:/Program Files/Google/Chrome/Application/chrome.exe'
 
+
+    # Headless 모드 설정
+    #options.add_argument('--headless')  # 브라우저 창을 띄우지 않음
+    #options.add_argument('--disable-gpu')  # GPU 비활성화 (Headless 모드에서 필요함)
+    #options.add_argument('--no-sandbox')  # 안전모드 비활성화 (리눅스 환경에서 주로 필요)
+    #options.add_argument('--remote-debugging-port=9222')  # 디버깅 포트 열기 (선택적)
+
+    prefs = {
+        "profile.managed_default_content_settings.images": 2,  # 이미지 로딩 비활성화
+        "profile.managed_default_content_settings.stylesheets": 2,  # 스타일시트 비활성화
+        "profile.managed_default_content_settings.cookies": 2,  # 쿠키 비활성화
+        "profile.managed_default_content_settings.javascript": 2  # JavaScript 비활성화
+    }
+    options.add_experimental_option("prefs", prefs)
     #사이트 오픈 후 브랜드 리스트 크롤링
     designersOpen = f"https://www.fragrantica.com/designers"
-    driver = webdriver.Chrome(service=service(ChromeDriverManager().install()))
+    # WebDriver 객체 생성
+    driver = webdriver.Chrome(service=service(ChromeDriverManager().install()), options=options)
     driver.get(designersOpen)
-    
 
     # 브랜드 리스트를 가지고옴 -> 메인에 보이는 브랜드 리스트는 120가지의 브랜드 -> 반복문은 0부터 시작이라 1를 기준으로 120바퀴 돌도록 설정
     def perfumeBrand(counter0, counter2, counter3, PerfumeBrandName, perfumeName):
         for a in range(2, 122):
-            brandNameData = driver.find_element(By.XPATH, f'//*[@id="main-content"]/div[1]/div[1]/div[4]/div[{a}]/a')
-            brandNameDataAppend = brandNameData.get_attribute('href')
-            PerfumeBrandName.append(brandNameDataAppend.split('/')[-1].replace('.html', ''))#문자열을 잘라서 가지고옴
-            
-            #크롤링을 진행한 브랜드의 폴더 생성
-            os.makedirs(PerfumeBrandName[counter0], exist_ok=True)  
-            print(f"생성한 폴더명::: {PerfumeBrandName[counter0]}")
-            counter0 += 1
+            try:
+                brandNameData = driver.find_element(By.XPATH, f'//*[@id="main-content"]/div[1]/div[1]/div[4]/div[{a}]/a')                
+                brandNameDataAppend = brandNameData.get_attribute('href')
+                PerfumeBrandName.append(brandNameDataAppend.split('/')[-1].replace('.html', ''))#문자열을 잘라서 가지고옴
+                
+                #크롤링을 진행한 브랜드의 폴더 생성
+                os.makedirs(PerfumeBrandName[counter0], exist_ok=True)  
+                print(f"생성한 폴더명::: {PerfumeBrandName[counter0]}")
+                counter0 += 1
+            except Exception as e:
+                print("요소를 찾을 수 없음:", e)
         driver.close()
     #크롤링 진행을 완료 후 현재 열려있는 창을 닫음
 
@@ -48,11 +66,15 @@ def init():
         for a2 in range(len(PerfumeBrandName)): #120번 반복이 필요함 각 브랜드 마다 접근ㅇ ㅣ필요하기 때문...
             url = f"https://www.fragrantica.com/designers/{PerfumeBrandName[a2]}.html"
             # 페이지 열기
-            driver = webdriver.Chrome(service=service(ChromeDriverManager().install()))
+            
+            driver = webdriver.Chrome(service=service(ChromeDriverManager().install()), options=options)
             driver.get(url)
-            elementsCount = driver.find_elements(By.CSS_SELECTOR, '.prefumeHbox.px1-box-shadow')
-            if len(elementsCount) > 100: #향수가 100개 이상인 경우
-                elementsCount[:100]  # 100개만 남기고 나머지는 버리기
+            try:
+                elementsCount = driver.find_elements(By.CSS_SELECTOR, '.prefumeHbox.px1-box-shadow')
+            except Exception as e:
+                print("요소를 찾을 수 없음:", e)
+            if len(elementsCount) > 10: #향수가 100개 이상인 경우
+                elementsCount[:10]  # 100개만 남기고 나머지는 버리기
             for b in range(len(elementsCount)):#product 수 만큼 실행 향수가 93개 있으면 93번 돌아돌아~
             # 첫번째 배열 브랜드의 제품 상세 링크를 반복문으로 가지고옴
                 try:#특정 영역에서 Exception 발생시 count는 증가(다음배열의 데이터로 넘어가기 위해) 처리
@@ -106,8 +128,9 @@ def init():
                 
     def jsonSeve(hrefValue, perfumeName):
         for i in range(len(hrefValue)):#hrefValue의 수 만큼 반복
-            driver = webdriver.Chrome(service=service(ChromeDriverManager().install()))
+            driver = webdriver.Chrome(service=service(ChromeDriverManager().install()), options=options)
             driver.get(hrefValue[i])
+            driver.minimize_window()
             print(f"Json Data Mapping perfumeName::: {perfumeName[i][0]} - PAGE OPEN")
             accordList = driver.find_elements(By.CSS_SELECTOR, '.cell.accord-box')
             accord = []
@@ -137,7 +160,7 @@ def init():
             # 결합된 데이터를 엑셀 파일에 저장
             combined_data.to_excel(excel_file, index=False, engine='openpyxl')
             driver.close()
-            print(f"Json Data Mapping perfumeName::: {perfumeName[i][0]} - PAGE CLOSE")
+            print(f"Json Data Mapping perfumeName::: {perfumeName[i][0]} - PAGE CLOSE Count: [{[i]}]")
             print(f"JSON 데이터를 기존 엑셀 파일에 추가했습니다. 파일 경로::: {excel_file} - {perfumeName[i][0]}")      
 
     
